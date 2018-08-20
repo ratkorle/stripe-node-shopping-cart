@@ -1,12 +1,18 @@
 let createError = require('http-errors');
 let express = require('express');
 let path = require('path');
+let bodyParser = require('body-parser');
 let cookieParser = require('cookie-parser');
 let logger = require('morgan');
 let indexRouter = require('./routes/index');
+let userRouter = require('./routes/user');
 let expressHbs = require('express-handlebars');
 let app = express();
 let mongoose = require('mongoose');
+let session = require('express-session');
+let passport = require('passport');
+let flash = require('connect-flash');
+let validator = require('express-validator');
 
 mongoose.connect('mongodb://localhost:27017/shopping', function(err/*, connection*/) {       // Connecting to MongoDB(shopping)
     if (err) {
@@ -16,17 +22,26 @@ mongoose.connect('mongodb://localhost:27017/shopping', function(err/*, connectio
         /*user.initializeAdmin(connection);*/
     }
 });
+require('./config/passport');
 
 // view engine setup
 app.engine('.hbs', expressHbs({defaultLayout: 'layout', extname: '.hbs'}));
 app.set('view engine', '.hbs');
 app.use(logger('dev'));
-app.use(express.json());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(validator());
+//app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(session({secret: 'mysecret', resave: false, saveUninitialized: false}));
+app.use(flash());
+app.use(passport.initialize());
+app.use(passport.session());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
+app.use('/user', userRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
