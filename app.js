@@ -13,6 +13,7 @@ let session = require('express-session');
 let passport = require('passport');
 let flash = require('connect-flash');
 let validator = require('express-validator');
+let MongoStore = require('connect-mongo')(session);
 
 mongoose.connect('mongodb://localhost:27017/shopping', function(err/*, connection*/) {       // Connecting to MongoDB(shopping)
     if (err) {
@@ -34,7 +35,13 @@ app.use(validator());
 //app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(session({secret: 'mysecret', resave: false, saveUninitialized: false}));
+app.use(session({
+    secret: 'mysecret',
+    resave: false,
+    saveUninitialized: false,
+    store: new MongoStore({ mongooseConnection: mongoose.connection }),
+    cookie: { maxAge: 180 * 60 * 1000 }         //180 mins multiplied with 1000 since maxAge expects value in milliseconds
+}));
 app.use(flash());
 app.use(passport.initialize());
 app.use(passport.session());
@@ -42,6 +49,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/user', userRouter);
+
+//Authentication global variable
+app.use(function (req, res, next) {
+    res.locals.login = req.isAuthenticated();
+    res.locals.session = req.session;
+    next();
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
